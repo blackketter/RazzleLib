@@ -1,6 +1,8 @@
 #include "RazzleMatrix.h"
 #include "RazzleModes.h"
 #include "RazzleCommands.h"
+#include "Clock.h"
+#include "TimeZones.h"
 extern Console console;
 // gO is gamma offset
 
@@ -27,52 +29,27 @@ const uint8_t gamma8[] = {
   177+gO,180+gO,182+gO,184+gO,186+gO,189+gO,191+gO,193+gO,196+gO,198+gO,200+gO,203+gO,205+gO,208+gO,210+gO,213+gO,
   215+gO,218+gO,220+gO,223+gO,225+gO,228+gO,231+gO,233+gO,236+gO,239+gO,241+gO,244+gO,247+gO,249+gO,252+gO,   255 };
 
-CRGB* leds;
-led_t num_leds;
-
-RazzleMatrix* matrix;
-
-RazzleMatrix* frames[2];
-
-RazzleMode* currMode = nullptr;
-
-static const RazzleMatrixConfig* theMatrix = nullptr;
-
-void setLEDMatrix(const RazzleMatrixConfig* m) {
-  theMatrix = m;
-}
-
-millis_t lastFrameMillis = 0;
-uint8_t nextFrame = 1;
-
-millis_t nextFrameMillis = 1;
-uint8_t lastFrame = 0;
-const millis_t defaultFrameInterval = 0;  // as fast as possible
-millis_t frameIntervalMillis = defaultFrameInterval;
-
-CRGB white(uint8_t y) {
-  uint32_t y32 = y;
-  return y32 + (y32 << 8) + (y32 << 16);
-}
-
-inline void fps(framerate_t f)  { frameIntervalMillis = f ? 1000/f : 0; };
-millis_t nowMillis = 0;
 
 ///////////////////////////////////////////////////////////////////////////////
 // Brightness
 ///////////////////////////////////////////////////////////////////////////////
 
-uint8_t dayBrightness = 128;
-uint8_t nightBrightness = 10;
-uint8_t getBrightness() { return isDay() ? dayBrightness : nightBrightness; }
-uint8_t getNightBrightness() { return nightBrightness; }
-uint8_t getDayBrightness() { return dayBrightness; }
-void setBrightness(uint8_t day, uint8_t night) { dayBrightness = day; nightBrightness = night; }
+uint8_t RazzleMatrix::getBrightness() { return isDay() ? dayBrightness : nightBrightness; }
+uint8_t RazzleMatrix::getNightBrightness() { return nightBrightness; }
+uint8_t RazzleMatrix::getDayBrightness() { return dayBrightness; }
+bool RazzleMatrix::isDay() {
+  Clock theClock(&usPT);
+  uint8_t hour = theClock.hour();
+  return theClock.hasBeenSet() && (hour >= 8) && (hour < 17);  // daytime is 8 to 5.  if the clock hasn't been set, it's night for safety
+}
+void RazzleMatrix::setBrightness(uint8_t day, uint8_t night) { dayBrightness = day; nightBrightness = night; }
 
 ///////////////////////////////////////////////////////////////////////////////
 
-void interpolateFrame() {
+void RazzleMatrix::interpolateFrame() {
 	uint8_t fract8;
+	CRGB* leds = pixels();
+	led_t num_leds = numPixels();
 	if (nextFrameMillis == lastFrameMillis) {
 		fract8 = 0;
 	} else {
@@ -80,7 +57,7 @@ void interpolateFrame() {
   }
 
   if (fract8 == 0 || (currMode && !currMode->interpolate())) {
-  	frames[lastFrame]->copy(matrix);
+  	frames[lastFrame]->copy(this);
   } else {
     for (led_t i = 0; i < num_leds; i++) {
       leds[i].r = lerp8by8( frames[lastFrame]->getLeds()[i].r, frames[nextFrame]->getLeds()[i].r, fract8 );
@@ -90,8 +67,7 @@ void interpolateFrame() {
   }
 }
 
-
-void render(RazzleMatrix* frame) {
+void RazzleMatrix::render(RazzleMatrix* frame) {
 	if (currMode) {
 		fps(currMode->fps());
 		theFPSCommand.newFrame();
@@ -101,7 +77,7 @@ void render(RazzleMatrix* frame) {
 	}
 }
 
-void loopLeds() {
+void RazzleMatrix::idle() {
   nowMillis = Uptime::millis();
   if (nowMillis >= nextFrameMillis) {
     uint8_t temp = lastFrame;
@@ -119,16 +95,14 @@ void loopLeds() {
 ///////////////////////////////////////////////////////////////////////////////
 // Mode management
 ///////////////////////////////////////////////////////////////////////////////
-int modeIndex = 0;
-int modeSetIndex = 0;
-millis_t lastModeSwitchTime = 0;
-millis_t lastModeSwitch() { return lastModeSwitchTime; }
-void resetLastModeSwitch() { lastModeSwitchTime = Uptime::millis(); }
+millis_t RazzleMatrix::lastModeSwitch() { return lastModeSwitchTime; }
 
-const char* getLEDMode() {
+void RazzleMatrix::resetLastModeSwitch() { lastModeSwitchTime = Uptime::millis(); }
+
+const char* RazzleMatrix::getLEDMode() {
 	return currMode->name();
 }
-bool setLEDMode(const char* newMode) {
+bool RazzleMatrix::setLEDMode(const char* newMode) {
 console.debugln("setledmode");
   if (newMode == nullptr) return false;
   RazzleMode* namedMode = RazzleMode::named(newMode);
@@ -163,11 +137,11 @@ console.debugln("setledmode");
   return true;
 }
 
-bool isLEDMode(const char* isMode) {
+bool RazzleMatrix::isLEDMode(const char* isMode) {
 	return strcasecmp(getLEDMode(), isMode) == 0;
 }
 
-void setNextLEDMode(bool allowWants) {
+void RazzleMatrix::setNextLEDMode(bool allowWants) {
 	const char* nextModeName;
 	RazzleMode* nextMode = nullptr;
 
@@ -210,7 +184,8 @@ void setNextLEDMode(bool allowWants) {
 	setLEDMode(nextMode->name());
 }
 
-void setNextLEDModeSet() {
+
+void RazzleMatrix::setNextLEDModeSet() {
 	modeSetIndex++;
 	if (modeSets[modeSetIndex] == nullptr) {
 		modeSetIndex = 0;
@@ -221,7 +196,135 @@ void setNextLEDModeSet() {
 	}
 }
 
-bool shouldAutoSwitch() {
+bool RazzleMatrix::shouldAutoSwitch() {
 	return modeSetIndex == 0;
 }
 
+///////////////////////////////////////////////////////////////////////////////
+// setupLeds
+///////////////////////////////////////////////////////////////////////////////
+RazzleMatrix* setupLeds(const RazzleMatrixConfig* info) {
+  RazzleMatrix* matrix;
+  led_t num_leds = info->width*info->height;
+	uint32_t milliAmpsMax =  info->powerSupplyMilliAmps;
+	EOrder order = info->colorOrder;
+
+
+  CRGB* leds = new CRGB[num_leds];
+  CRGB* frameled0 = new CRGB[num_leds];
+  CRGB* frameled1 = new CRGB[num_leds];
+  matrix = new RazzleMatrix(leds, info->width, info->height, info->matrixType);
+  matrix->frames[0] = new RazzleMatrix(frameled0, info->width, info->height, info->matrixType);
+  matrix->frames[1] = new RazzleMatrix(frameled1, info->width, info->height, info->matrixType);
+
+  if (!leds || !frameled0 || !frameled1 || !matrix->frames[0] || !matrix->frames[1]) {
+    console.debugln("Error allocating LED buffers");
+    return nullptr;
+  }
+  fill_solid(leds, num_leds, CRGB::Black);
+  matrix->frames[0]->fillScreen(LED_BLACK);
+  matrix->frames[1]->fillScreen(LED_BLACK);
+
+	led_t offset = 0;
+	led_t c;
+	int i = 0;
+
+  switch (order) {
+    case RGB:
+    	// fucking templates mean that this needs to be hardcoded
+    	c = info->segment[i++];
+    	if (c) {
+    		FastLED.addLeds<CHIPSET, LED_DATA_PIN0, RGB>(leds, offset, c).setCorrection( RazzleMatrix::defaultCorrection );
+				offset += c;
+				c = info->segment[i++];
+				if (c) {
+					FastLED.addLeds<CHIPSET, LED_DATA_PIN1, RGB>(leds, offset, c).setCorrection( RazzleMatrix::defaultCorrection );
+					offset += c;
+					c = info->segment[i++];
+					if (c) {
+						FastLED.addLeds<CHIPSET, LED_DATA_PIN2, RGB>(leds, offset, c).setCorrection( RazzleMatrix::defaultCorrection );
+						offset += c;
+						c = info->segment[i++];
+						if (c) {
+							FastLED.addLeds<CHIPSET, LED_DATA_PIN3, RGB>(leds, offset, c).setCorrection( RazzleMatrix::defaultCorrection );
+							offset += c;
+							c = info->segment[i++];
+							if (c) {
+								FastLED.addLeds<CHIPSET, LED_DATA_PIN4, RGB>(leds, offset, c).setCorrection( RazzleMatrix::defaultCorrection );
+								offset += c;
+								c = info->segment[i++];
+								if (c) {
+									FastLED.addLeds<CHIPSET, LED_DATA_PIN5, RGB>(leds, offset, c).setCorrection( RazzleMatrix::defaultCorrection );
+									offset += c;
+									c = info->segment[i++];
+									if (c) {
+										c = info->segment[i++];
+										FastLED.addLeds<CHIPSET, LED_DATA_PIN6, RGB>(leds, offset, c).setCorrection( RazzleMatrix::defaultCorrection );
+										offset += c;
+										if (c) {
+											FastLED.addLeds<CHIPSET, LED_DATA_PIN7, RGB>(leds, offset, c).setCorrection( RazzleMatrix::defaultCorrection );
+    								}
+    							}
+    						}
+    					}
+    				}
+    			}
+    		}
+    	}
+      break;
+    case GRB:
+    	// fucking templates mean that this needs to be hardcoded
+    	c = info->segment[i++];
+    	if (c) {
+    		FastLED.addLeds<CHIPSET, LED_DATA_PIN0, GRB>(leds, offset, c).setCorrection( RazzleMatrix::defaultCorrection );
+				offset += c;
+				c = info->segment[i++];
+				if (c) {
+					FastLED.addLeds<CHIPSET, LED_DATA_PIN1, GRB>(leds, offset, c).setCorrection( RazzleMatrix::defaultCorrection );
+					offset += c;
+					c = info->segment[i++];
+					if (c) {
+						FastLED.addLeds<CHIPSET, LED_DATA_PIN2, GRB>(leds, offset, c).setCorrection( RazzleMatrix::defaultCorrection );
+						offset += c;
+						c = info->segment[i++];
+						if (c) {
+							FastLED.addLeds<CHIPSET, LED_DATA_PIN3, GRB>(leds, offset, c).setCorrection( RazzleMatrix::defaultCorrection );
+							offset += c;
+							c = info->segment[i++];
+							if (c) {
+								FastLED.addLeds<CHIPSET, LED_DATA_PIN4, GRB>(leds, offset, c).setCorrection( RazzleMatrix::defaultCorrection );
+								offset += c;
+								c = info->segment[i++];
+								if (c) {
+									FastLED.addLeds<CHIPSET, LED_DATA_PIN5, GRB>(leds, offset, c).setCorrection( RazzleMatrix::defaultCorrection );
+									offset += c;
+									c = info->segment[i++];
+									if (c) {
+										FastLED.addLeds<CHIPSET, LED_DATA_PIN6, GRB>(leds, offset, c).setCorrection( RazzleMatrix::defaultCorrection );
+										offset += c;
+										c = info->segment[i++];
+										if (c) {
+											FastLED.addLeds<CHIPSET, LED_DATA_PIN7, GRB>(leds, offset, c).setCorrection( RazzleMatrix::defaultCorrection );
+    								}
+    							}
+    						}
+    					}
+    				}
+    			}
+    		}
+    	}
+      break;
+    default:
+      console.debugln("ERROR: Bad color order");
+  }
+
+  FastLED.setMaxPowerInVoltsAndMilliamps	( 5, milliAmpsMax);
+
+  FastLED.setCorrection(RazzleMatrix::defaultCorrection);
+  FastLED.setTemperature(RazzleMatrix::defaultTemperature);
+  FastLED.show(matrix->getBrightness());
+
+  RazzleMode::defaultMatrix(matrix);
+
+  return matrix;
+}

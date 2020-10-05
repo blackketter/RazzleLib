@@ -21,11 +21,17 @@ class RazzleMode {
     virtual bool interpolate() { return true; }  // frames should be interpolated
     virtual framerate_t fps() { return 0; } // as fast as possible
 
+    CRGB white(uint8_t y) {
+      uint32_t y32 = y;
+      return y32 + (y32 << 8) + (y32 << 16);
+    }
+
     RazzleMode* next() { return _next; };
     void setNext(RazzleMode* next) { _next = next; }
     static RazzleMode* first() { return _first; }
     static RazzleMode* named(const char* find);
     static void defaultMatrix(RazzleMatrix* m) { _m = m; }
+    static RazzleMatrix* defaultMatrix() { return _m; }
   private:
     RazzleMode* _next = nullptr;
     static RazzleMode* _first;
