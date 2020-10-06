@@ -2,7 +2,7 @@
 #include "RazzleCommands.h"
 #include "Clock.h"
 #include "TimeZones.h"
-#include "RazzleModeSets.h"
+#include "DefaultRazzleModeSets.h"
 
 extern Console console;
 
@@ -179,6 +179,13 @@ bool RazzleMatrix::isDay() {
 ///////////////////////////////////////////////////////////////////////////////
 
 void RazzleMatrix::idle() {
+
+  if (shouldAutoSwitch() && autoSwitchInterval() &&
+      (Uptime::millis() - lastModeSwitch()) > autoSwitchInterval()) {
+      setNextLEDMode(true);
+      console.debugf("Autoswitched to mode %s\n", getLEDMode());
+  }
+
   nowMillis = Uptime::millis();
   if (nowMillis >= nextFrameMillis) {
     uint8_t temp = lastFrame;
@@ -227,10 +234,6 @@ void RazzleMatrix::render(RazzleMatrix* frame) {
 ///////////////////////////////////////////////////////////////////////////////
 // Mode management
 ///////////////////////////////////////////////////////////////////////////////
-millis_t RazzleMatrix::lastModeSwitch() { return lastModeSwitchTime; }
-
-void RazzleMatrix::resetLastModeSwitch() { lastModeSwitchTime = Uptime::millis(); }
-
 const char* RazzleMatrix::getLEDMode() {
 	return currMode->name();
 }
@@ -275,6 +278,14 @@ bool RazzleMatrix::isLEDMode(const char* isMode) {
 	return strcasecmp(getLEDMode(), isMode) == 0;
 }
 
+///////////////////////////////////////////////////////////////////////////////
+// Mode switching
+///////////////////////////////////////////////////////////////////////////////
+millis_t RazzleMatrix::lastModeSwitch() { return lastModeSwitchTime; }
+
+void RazzleMatrix::resetLastModeSwitch() { lastModeSwitchTime = Uptime::millis(); }
+
+
 void RazzleMatrix::setNextLEDMode(bool allowWants) {
 	const char* nextModeName;
 	RazzleMode* nextMode = nullptr;
@@ -314,7 +325,6 @@ void RazzleMatrix::setNextLEDMode(bool allowWants) {
 
 		} while (nextMode == nullptr || !nextMode->canRun());
 	}
-  console.debugf("setting next LED mode to %s\n",nextMode->name());
 	setLEDMode(nextMode->name());
 }
 

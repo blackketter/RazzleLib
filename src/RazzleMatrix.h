@@ -93,7 +93,8 @@ class RazzleMatrix : public FastLED_NeoMatrix {
     static const ColorTemperature defaultTemperature = DirectSunlight;
 
     RazzleMatrix* frames[2];
-
+    void autoSwitchInterval(millis_t interval) { _autoSwitchInterval = interval; }
+    millis_t autoSwitchInterval() { return _autoSwitchInterval; }
   private:
     void render(RazzleMatrix* frame);
     void interpolateFrame();
@@ -116,7 +117,7 @@ class RazzleMatrix : public FastLED_NeoMatrix {
     int modeIndex = 0;
     int modeSetIndex = 0;
     millis_t lastModeSwitchTime = 0;
-
+    millis_t _autoSwitchInterval = 1000L * 5 * 60;
 };
 
 RazzleMatrix* setupLeds(const RazzleMatrixConfig* info);

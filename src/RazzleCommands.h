@@ -64,3 +64,18 @@ class NextCommand : public Command {
     }
 };
 NextCommand theNextCommand;
+
+class SwitchCommand : public Command {
+  public:
+    const char* getName() { return "switch"; }
+    const char* getHelp() { return ("set autoswitch interval in seconds (0 to disable)"); }
+    void execute(Console* c, uint8_t paramCount, char** params) {
+      uint32_t b = 0;
+      if (paramCount == 1) {
+        b = atoi(params[1]);
+        RazzleMode::defaultMatrix()->autoSwitchInterval(b*1000);
+      }
+      c->printf("autoswitch interval: %d seconds\n", RazzleMode::defaultMatrix()->autoSwitchInterval()/1000);
+    }
+};
+SwitchCommand theSwitchCommand;
