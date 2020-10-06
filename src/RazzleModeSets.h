@@ -1,5 +1,5 @@
-#ifndef _RazzleModes_
-#define _RazzleModes_
+#ifndef _RazzleModeSets_
+#define _RazzleModeSets_
 
 const char* colorModes[] =
 {

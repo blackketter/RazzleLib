@@ -8,6 +8,7 @@ class WaterfallMode : public RazzleMode {
     virtual bool canRun() { return _m->height() >= 4; }
     virtual bool dither() { return false; }
     virtual bool interpolate() { return true; }
+
   private:
 
 };
@@ -31,3 +32,5 @@ void WaterfallMode::draw(RazzleMatrix* frame) {
     frame->drawPixelCRGB(x,y, white(random(10) == 0 ? 255 : 0));
   }
 }
+
+// TODO: The Matrix needs a mode

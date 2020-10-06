@@ -79,6 +79,7 @@ class RazzleMatrix : public FastLED_NeoMatrix {
     bool isDay();
 
     bool setLEDMode(const char* newmode);
+    bool setLEDMode(RazzleMode* newmode);
     const char* getLEDMode();
     bool isLEDMode(const char* ismode);
     void setNextLEDMode(bool allowWants = false);

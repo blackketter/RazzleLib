@@ -1,15 +1,15 @@
 #include "RazzleMatrix.h"
-#include "RazzleModes.h"
 #include "RazzleCommands.h"
 #include "Clock.h"
 #include "TimeZones.h"
+#include "RazzleModeSets.h"
+
 extern Console console;
-// gO is gamma offset
 
 #include "Commands/FPSCommand.h"
 FPSCommand theFPSCommand;
 
-
+// gO is gamma offset
 const uint8_t gO = 1;
 const uint8_t gamma8[] = {
        0,  0+gO,  0+gO,  0+gO,  0+gO,  0+gO,  0+gO,  0+gO,  0+gO,  0+gO,  0+gO,  0+gO,  0+gO,  0+gO,  0+gO,  0+gO,
@@ -28,175 +28,6 @@ const uint8_t gamma8[] = {
   144+gO,146+gO,148+gO,150+gO,152+gO,154+gO,156+gO,158+gO,160+gO,162+gO,164+gO,167+gO,169+gO,171+gO,173+gO,175+gO,
   177+gO,180+gO,182+gO,184+gO,186+gO,189+gO,191+gO,193+gO,196+gO,198+gO,200+gO,203+gO,205+gO,208+gO,210+gO,213+gO,
   215+gO,218+gO,220+gO,223+gO,225+gO,228+gO,231+gO,233+gO,236+gO,239+gO,241+gO,244+gO,247+gO,249+gO,252+gO,   255 };
-
-
-///////////////////////////////////////////////////////////////////////////////
-// Brightness
-///////////////////////////////////////////////////////////////////////////////
-
-uint8_t RazzleMatrix::getBrightness() { return isDay() ? dayBrightness : nightBrightness; }
-uint8_t RazzleMatrix::getNightBrightness() { return nightBrightness; }
-uint8_t RazzleMatrix::getDayBrightness() { return dayBrightness; }
-bool RazzleMatrix::isDay() {
-  Clock theClock(&usPT);
-  uint8_t hour = theClock.hour();
-  return theClock.hasBeenSet() && (hour >= 8) && (hour < 17);  // daytime is 8 to 5.  if the clock hasn't been set, it's night for safety
-}
-void RazzleMatrix::setBrightness(uint8_t day, uint8_t night) { dayBrightness = day; nightBrightness = night; }
-
-///////////////////////////////////////////////////////////////////////////////
-
-void RazzleMatrix::interpolateFrame() {
-	uint8_t fract8;
-	CRGB* leds = pixels();
-	led_t num_leds = numPixels();
-	if (nextFrameMillis == lastFrameMillis) {
-		fract8 = 0;
-	} else {
-  	fract8 = ((nowMillis - lastFrameMillis) * 256) / (nextFrameMillis - lastFrameMillis);
-  }
-
-  if (fract8 == 0 || (currMode && !currMode->interpolate())) {
-  	frames[lastFrame]->copy(this);
-  } else {
-    for (led_t i = 0; i < num_leds; i++) {
-      leds[i].r = lerp8by8( frames[lastFrame]->getLeds()[i].r, frames[nextFrame]->getLeds()[i].r, fract8 );
-      leds[i].g = lerp8by8( frames[lastFrame]->getLeds()[i].g, frames[nextFrame]->getLeds()[i].g, fract8 );
-      leds[i].b = lerp8by8( frames[lastFrame]->getLeds()[i].b, frames[nextFrame]->getLeds()[i].b, fract8 );
-    }
-  }
-}
-
-void RazzleMatrix::render(RazzleMatrix* frame) {
-	if (currMode) {
-		fps(currMode->fps());
-		theFPSCommand.newFrame();
-		currMode->draw(frame);
-	} else {
-		//console.debugln("No currMode!");
-	}
-}
-
-void RazzleMatrix::idle() {
-  nowMillis = Uptime::millis();
-  if (nowMillis >= nextFrameMillis) {
-    uint8_t temp = lastFrame;
-    lastFrame = nextFrame;
-    nextFrame = temp;
-    lastFrameMillis = nextFrameMillis;
-    nextFrameMillis = nowMillis + frameIntervalMillis;
-    frames[lastFrame]->copy(frames[nextFrame]);
-    render(frames[nextFrame]);
-  }
-	interpolateFrame();
-  FastLED.show(getBrightness());
-}
-
-///////////////////////////////////////////////////////////////////////////////
-// Mode management
-///////////////////////////////////////////////////////////////////////////////
-millis_t RazzleMatrix::lastModeSwitch() { return lastModeSwitchTime; }
-
-void RazzleMatrix::resetLastModeSwitch() { lastModeSwitchTime = Uptime::millis(); }
-
-const char* RazzleMatrix::getLEDMode() {
-	return currMode->name();
-}
-bool RazzleMatrix::setLEDMode(const char* newMode) {
-  if (newMode == nullptr) return false;
-  RazzleMode* namedMode = RazzleMode::named(newMode);
-  if (namedMode == nullptr) return false;
-  if (!namedMode->canRun()) return false;
-  if (currMode == namedMode) return true;
-
-	resetLastModeSwitch();
-
-  if (currMode) { currMode->end(); }
-  currMode = namedMode;  // 120 led long string is about 100fps, dithering at about 50fps
-
-//	console.debugln("setDither");
-//  if (maxSegmentLen() > 120) {
-    FastLED.setDither( 0 );
-//  } else {
-//  	FastLED.setDither(currMode->dither());
-//  }
-	currMode->begin();
-  lastFrame = 0;
-  lastFrameMillis = nowMillis;
-
-  frames[lastFrame]->fillScreen(LED_BLACK);
-  render(frames[lastFrame]);
-
-  nextFrame = 1;
-  nextFrameMillis = nowMillis + frameIntervalMillis;
-  frames[nextFrame]->fillScreen(LED_BLACK);
-  render(frames[nextFrame]);
-
-  return true;
-}
-
-bool RazzleMatrix::isLEDMode(const char* isMode) {
-	return strcasecmp(getLEDMode(), isMode) == 0;
-}
-
-void RazzleMatrix::setNextLEDMode(bool allowWants) {
-	const char* nextModeName;
-	RazzleMode* nextMode = nullptr;
-
-	if (allowWants) {
-		nextMode = RazzleMode::first();
-		int wantsCount = 0;
-		while (nextMode) {
-			if (nextMode->canRun() && nextMode->wantsToRun())
-				wantsCount++;;
-			nextMode = nextMode->next();
-		}
-		if (wantsCount) {
-			wantsCount = random(wantsCount);
-			nextMode = RazzleMode::first();
-			while (nextMode) {
-				if (nextMode->canRun() && nextMode->wantsToRun()) {
-					if (wantsCount == 0) {
-						break;
-					}
-					wantsCount--;
-				}
-				nextMode = nextMode->next();
-			}
-		}
-	}
-
-	if (nextMode == nullptr) {
-		do {
-			modeIndex++;
-			if (modeSets[modeSetIndex][modeIndex] == nullptr) {
-				modeIndex = 0;
-			}
-
-			nextModeName = modeSets[modeSetIndex][modeIndex];
-			nextMode = RazzleMode::named(nextModeName);
-
-		} while (nextMode == nullptr || !nextMode->canRun());
-	}
-  console.debugf("setting next LED mode to %s\n",nextMode->name());
-	setLEDMode(nextMode->name());
-}
-
-
-void RazzleMatrix::setNextLEDModeSet() {
-	modeSetIndex++;
-	if (modeSets[modeSetIndex] == nullptr) {
-		modeSetIndex = 0;
-	}
-	modeIndex = 0;
-	if (!setLEDMode(modeSets[modeSetIndex][modeIndex])) {
-		setNextLEDMode();
-	}
-}
-
-bool RazzleMatrix::shouldAutoSwitch() {
-	return modeSetIndex == 0;
-}
 
 ///////////////////////////////////////////////////////////////////////////////
 // setupLeds
@@ -326,3 +157,179 @@ RazzleMatrix* setupLeds(const RazzleMatrixConfig* info) {
 
   return matrix;
 }
+
+///////////////////////////////////////////////////////////////////////////////
+// Brightness
+///////////////////////////////////////////////////////////////////////////////
+
+void RazzleMatrix::setBrightness(uint8_t day, uint8_t night) { dayBrightness = day; nightBrightness = night; }
+
+uint8_t RazzleMatrix::getBrightness() { return isDay() ? dayBrightness : nightBrightness; }
+uint8_t RazzleMatrix::getNightBrightness() { return nightBrightness; }
+uint8_t RazzleMatrix::getDayBrightness() { return dayBrightness; }
+
+bool RazzleMatrix::isDay() {
+  Clock theClock(&usPT);
+  uint8_t hour = theClock.hour();
+  return theClock.hasBeenSet() && (hour >= 8) && (hour < 17);  // daytime is 8 to 5.  if the clock hasn't been set, it's night for safety
+}
+
+///////////////////////////////////////////////////////////////////////////////
+// Rendering
+///////////////////////////////////////////////////////////////////////////////
+
+void RazzleMatrix::idle() {
+  nowMillis = Uptime::millis();
+  if (nowMillis >= nextFrameMillis) {
+    uint8_t temp = lastFrame;
+    lastFrame = nextFrame;
+    nextFrame = temp;
+    lastFrameMillis = nextFrameMillis;
+    nextFrameMillis = nowMillis + frameIntervalMillis;
+    frames[lastFrame]->copy(frames[nextFrame]);
+    render(frames[nextFrame]);
+  }
+	interpolateFrame();
+  FastLED.show(getBrightness());
+}
+
+void RazzleMatrix::interpolateFrame() {
+	uint8_t fract8;
+	CRGB* leds = pixels();
+	led_t num_leds = numPixels();
+	if (nextFrameMillis == lastFrameMillis) {
+		fract8 = 0;
+	} else {
+  	fract8 = ((nowMillis - lastFrameMillis) * 256) / (nextFrameMillis - lastFrameMillis);
+  }
+
+  if (fract8 == 0 || (currMode && !currMode->interpolate())) {
+  	frames[lastFrame]->copy(this);
+  } else {
+    for (led_t i = 0; i < num_leds; i++) {
+      leds[i].r = lerp8by8( frames[lastFrame]->getLeds()[i].r, frames[nextFrame]->getLeds()[i].r, fract8 );
+      leds[i].g = lerp8by8( frames[lastFrame]->getLeds()[i].g, frames[nextFrame]->getLeds()[i].g, fract8 );
+      leds[i].b = lerp8by8( frames[lastFrame]->getLeds()[i].b, frames[nextFrame]->getLeds()[i].b, fract8 );
+    }
+  }
+}
+
+void RazzleMatrix::render(RazzleMatrix* frame) {
+	if (currMode) {
+		fps(currMode->fps());
+		theFPSCommand.newFrame();
+		currMode->draw(frame);
+	} else {
+		//console.debugln("No currMode!");
+	}
+}
+
+///////////////////////////////////////////////////////////////////////////////
+// Mode management
+///////////////////////////////////////////////////////////////////////////////
+millis_t RazzleMatrix::lastModeSwitch() { return lastModeSwitchTime; }
+
+void RazzleMatrix::resetLastModeSwitch() { lastModeSwitchTime = Uptime::millis(); }
+
+const char* RazzleMatrix::getLEDMode() {
+	return currMode->name();
+}
+
+bool RazzleMatrix::setLEDMode(const char* newMode) {
+  return setLEDMode(RazzleMode::named(newMode));
+}
+
+bool RazzleMatrix::setLEDMode(RazzleMode* newMode) {
+  if (newMode == nullptr) return false;
+  if (!newMode->canRun()) return false;
+  if (currMode == newMode) return true;
+
+	resetLastModeSwitch();
+
+  if (currMode) { currMode->end(); }
+  currMode = newMode;
+
+ // 120 led long string is about 100fps, dithering at about 50fps
+//  console.debugln("setDither");
+//  if (maxSegmentLen() > 120) {
+    FastLED.setDither( 0 );
+//  } else {
+//  	FastLED.setDither(currMode->dither());
+//  }
+	currMode->begin();
+  lastFrame = 0;
+  lastFrameMillis = nowMillis;
+
+  frames[lastFrame]->fillScreen(LED_BLACK);
+  render(frames[lastFrame]);
+
+  nextFrame = 1;
+  nextFrameMillis = nowMillis + frameIntervalMillis;
+  frames[nextFrame]->fillScreen(LED_BLACK);
+  render(frames[nextFrame]);
+
+  return true;
+}
+
+bool RazzleMatrix::isLEDMode(const char* isMode) {
+	return strcasecmp(getLEDMode(), isMode) == 0;
+}
+
+void RazzleMatrix::setNextLEDMode(bool allowWants) {
+	const char* nextModeName;
+	RazzleMode* nextMode = nullptr;
+
+	if (allowWants) {
+		nextMode = RazzleMode::first();
+		int wantsCount = 0;
+		while (nextMode) {
+			if (nextMode->canRun() && nextMode->wantsToRun())
+				wantsCount++;;
+			nextMode = nextMode->next();
+		}
+		if (wantsCount) {
+			wantsCount = random(wantsCount);
+			nextMode = RazzleMode::first();
+			while (nextMode) {
+				if (nextMode->canRun() && nextMode->wantsToRun()) {
+					if (wantsCount == 0) {
+						break;
+					}
+					wantsCount--;
+				}
+				nextMode = nextMode->next();
+			}
+		}
+	}
+
+	if (nextMode == nullptr) {
+		do {
+			modeIndex++;
+			if (modeSets[modeSetIndex][modeIndex] == nullptr) {
+				modeIndex = 0;
+			}
+
+			nextModeName = modeSets[modeSetIndex][modeIndex];
+			nextMode = RazzleMode::named(nextModeName);
+
+		} while (nextMode == nullptr || !nextMode->canRun());
+	}
+  console.debugf("setting next LED mode to %s\n",nextMode->name());
+	setLEDMode(nextMode->name());
+}
+
+void RazzleMatrix::setNextLEDModeSet() {
+	modeSetIndex++;
+	if (modeSets[modeSetIndex] == nullptr) {
+		modeSetIndex = 0;
+	}
+	modeIndex = 0;
+	if (!setLEDMode(modeSets[modeSetIndex][modeIndex])) {
+		setNextLEDMode();
+	}
+}
+
+bool RazzleMatrix::shouldAutoSwitch() {
+	return modeSetIndex == 0;
+}
+
