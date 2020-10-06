@@ -11,7 +11,7 @@ class LEDModesCommand : public Command {
       RazzleMode* m = RazzleMode::first();
       c->printf("Valid LED modes:\n");
       while (m) {
-        c->printf("  %s\n", m->name());
+        c->printf("  %s %s\n", m->name(), m->canRun() ? "":"(disabled)");
         m = m->next();
       }
     }

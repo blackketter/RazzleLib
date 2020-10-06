@@ -103,7 +103,6 @@ const char* RazzleMatrix::getLEDMode() {
 	return currMode->name();
 }
 bool RazzleMatrix::setLEDMode(const char* newMode) {
-console.debugln("setledmode");
   if (newMode == nullptr) return false;
   RazzleMode* namedMode = RazzleMode::named(newMode);
   if (namedMode == nullptr) return false;
@@ -131,7 +130,6 @@ console.debugln("setledmode");
   nextFrame = 1;
   nextFrameMillis = nowMillis + frameIntervalMillis;
   frames[nextFrame]->fillScreen(LED_BLACK);
-	console.debugln("render");
   render(frames[nextFrame]);
 
   return true;

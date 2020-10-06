@@ -42,6 +42,17 @@ const uint8_t LED_DATA_PIN8 = 0;
 const uint8_t LED_DATA_PIN9 = 2;
 #endif
 
+#if defined(CORE_TEENSY)
+const uint8_t LED_DATA_PIN0 = 17;
+const uint8_t LED_DATA_PIN1 = 17;
+const uint8_t LED_DATA_PIN2 = 17;
+const uint8_t LED_DATA_PIN3 = 17;
+const uint8_t LED_DATA_PIN4 = 17;
+const uint8_t LED_DATA_PIN5 = 17;
+const uint8_t LED_DATA_PIN6 = 17;
+const uint8_t LED_DATA_PIN7 = 17;
+#endif
+
 class RazzleMode;
 
 struct RazzleMatrixConfig {

@@ -5,9 +5,9 @@ class WaterfallMode : public RazzleMode {
     virtual const char* name() { return "Waterfall"; }
     virtual void draw(RazzleMatrix* frame);
     virtual framerate_t fps() { return 15; }
-    virtual bool canRun() { return _m->height() >= 8; }
+    virtual bool canRun() { return _m->height() >= 4; }
     virtual bool dither() { return false; }
-    virtual bool interpolate() { return false; }
+    virtual bool interpolate() { return true; }
   private:
 
 };
