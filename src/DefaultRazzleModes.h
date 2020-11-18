@@ -9,6 +9,7 @@
 #include "modes/FlashesMode.h"
 #include "modes/LifeMode.h"
 #include "modes/LinesMode.h"
+#include "modes/MathMode.h"
 #include "modes/NoiseMode.h"
 #include "modes/RainbowRotateMode.h"
 #include "modes/SolidMode.h"

@@ -7,7 +7,7 @@ class VortexMode : public RazzleMode {
 
     virtual void draw(RazzleMatrix* frame);
 
-    virtual bool canRun() { return _m->width() > 7 && _m->height() > 7; }
+    virtual bool canRun() { return _m->width() > 4 && _m->height() > 4; }
 
     virtual void begin() {
       RazzleMode::begin();

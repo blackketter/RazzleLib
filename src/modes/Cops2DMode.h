@@ -35,7 +35,7 @@ void Animation2DMode::draw(RazzleMatrix* frame) {
   bool drawFrame = false;
 
   millis_t now = Uptime::millis();
-  if (_m->lastModeSwitch() > _frameTime) {
+  if (beginTime() > _frameTime) {
     // restart animation
     _frameTime = now;
     _frameIndex = 0;

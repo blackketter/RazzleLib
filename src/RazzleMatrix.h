@@ -1,22 +1,24 @@
 #ifndef _RazzleMatrix_
 #define _RazzleMatrix_
 
-// suppress extraneous warnings
-#define FASTLED_INTERNAL
+#include <Clock.h>
+
+// configure FastLED
 #define FASTLED_ALLOW_INTERRUPTS 0
 #define CHIPSET         WS2811
+
+// suppress extraneous warnings
+#define FASTLED_INTERNAL
+
 #include <FastLED.h>
 #include <FastLED_NeoMatrix.h>
-#include <Clock.h>
 
 typedef uint16_t led_t;
 typedef float framerate_t;
 typedef int16_t pixel_t;
 const int MAX_SEGMENTS = 16;
 
-#define PEGGYMATRIXTYPE (NEO_MATRIX_BOTTOM + NEO_MATRIX_LEFT + NEO_MATRIX_COLUMNS + NEO_MATRIX_ZIGZAG)
-#define SINGLEROWSTYPE (NEO_MATRIX_BOTTOM + NEO_MATRIX_LEFT + NEO_MATRIX_COLUMNS)
-
+// These need to be statically defined so as to work with the FastLED templates
 #ifdef ESP8266
 const uint8_t LED_DATA_PIN0 = D2;
 const uint8_t LED_DATA_PIN1 = D2;
@@ -82,19 +84,29 @@ class RazzleMatrix : public FastLED_NeoMatrix {
     bool setLEDMode(RazzleMode* newmode);
     const char* getLEDMode();
     bool isLEDMode(const char* ismode);
-    void setNextLEDMode(bool allowWants = false);
-    void setNextLEDModeSet();
-    bool shouldAutoSwitch();
-    millis_t lastModeSwitch();
-    void resetLastModeSwitch();
+
     void  idle();
 
     static const LEDColorCorrection defaultCorrection = TypicalSMD5050; // TypicalLEDStrip;
     static const ColorTemperature defaultTemperature = DirectSunlight;
 
     RazzleMatrix* frames[2];
+
+    RazzleMode* currentMode() { return currMode; };
+
+    void setRandomScreensaverMode();
+
+    void resetAutoSwitch() { _nextAutoSwitch = _autoSwitchBeginTimeout + Uptime::millis(); };
+
+    void autoSwitchEnable(bool enabled) { _autoSwitchEnable = enabled; }
+    bool autoSwitchEnabled() { return _autoSwitchEnable; }
+
     void autoSwitchInterval(millis_t interval) { _autoSwitchInterval = interval; }
     millis_t autoSwitchInterval() { return _autoSwitchInterval; }
+
+    void autoSwitchBegin(millis_t timeout) { _autoSwitchBeginTimeout = timeout; }
+    millis_t autoSwitchBegin() { return _autoSwitchBeginTimeout; }
+
   private:
     void render(RazzleMatrix* frame);
     void interpolateFrame();
@@ -114,10 +126,12 @@ class RazzleMatrix : public FastLED_NeoMatrix {
 
     uint8_t dayBrightness = 128;
     uint8_t nightBrightness = 10;
-    int modeIndex = 0;
-    int modeSetIndex = 0;
-    millis_t lastModeSwitchTime = 0;
-    millis_t _autoSwitchInterval = 1000L * 5 * 60;
+
+    millis_t _nextAutoSwitch = 0;
+    millis_t _autoSwitchEnable = true;
+
+    millis_t _autoSwitchInterval = 1000 * 30;
+    millis_t _autoSwitchBeginTimeout = 1000 * 5;
 };
 
 RazzleMatrix* setupLeds(const RazzleMatrixConfig* info);

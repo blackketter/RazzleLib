@@ -7,7 +7,7 @@ class SolidMode : public RazzleMode {
     virtual void draw(RazzleMatrix* frame) {
       fill_solid(frame->pixels(), frame->numPixels(), _color);
     }
-
+    virtual bool isScreensaver() override { return false; }
   protected:
     const char* _name;
     CRGB _color;

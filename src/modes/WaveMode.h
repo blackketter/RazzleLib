@@ -20,5 +20,3 @@ class WaveMode : public RazzleMode {
 
 WaveMode theWaveMode;
 
-
-
