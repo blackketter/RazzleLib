@@ -8,26 +8,6 @@
 #include "Commands/FPSCommand.h"
 FPSCommand theFPSCommand;
 
-// gO is gamma offset
-const uint8_t gO = 1;
-const uint8_t gamma8[] = {
-       0,  0+gO,  0+gO,  0+gO,  0+gO,  0+gO,  0+gO,  0+gO,  0+gO,  0+gO,  0+gO,  0+gO,  0+gO,  0+gO,  0+gO,  0+gO,
-    0+gO,  0+gO,  0+gO,  0+gO,  0+gO,  0+gO,  0+gO,  0+gO,  0+gO,  0+gO,  0+gO,  0+gO,  1+gO,  1+gO,  1+gO,  1+gO,
-    1+gO,  1+gO,  1+gO,  1+gO,  1+gO,  1+gO,  1+gO,  1+gO,  1+gO,  2+gO,  2+gO,  2+gO,  2+gO,  2+gO,  2+gO,  2+gO,
-    2+gO,  3+gO,  3+gO,  3+gO,  3+gO,  3+gO,  3+gO,  3+gO,  4+gO,  4+gO,  4+gO,  4+gO,  4+gO,  5+gO,  5+gO,  5+gO,
-    5+gO,  6+gO,  6+gO,  6+gO,  6+gO,  7+gO,  7+gO,  7+gO,  7+gO,  8+gO,  8+gO,  8+gO,  9+gO,  9+gO,  9+gO, 10+gO,
-   10+gO, 10+gO, 11+gO, 11+gO, 11+gO, 12+gO, 12+gO, 13+gO, 13+gO, 13+gO, 14+gO, 14+gO, 15+gO, 15+gO, 16+gO, 16+gO,
-   17+gO, 17+gO, 18+gO, 18+gO, 19+gO, 19+gO, 20+gO, 20+gO, 21+gO, 21+gO, 22+gO, 22+gO, 23+gO, 24+gO, 24+gO, 25+gO,
-   25+gO, 26+gO, 27+gO, 27+gO, 28+gO, 29+gO, 29+gO, 30+gO, 31+gO, 32+gO, 32+gO, 33+gO, 34+gO, 35+gO, 35+gO, 36+gO,
-   37+gO, 38+gO, 39+gO, 39+gO, 40+gO, 41+gO, 42+gO, 43+gO, 44+gO, 45+gO, 46+gO, 47+gO, 48+gO, 49+gO, 50+gO, 50+gO,
-   51+gO, 52+gO, 54+gO, 55+gO, 56+gO, 57+gO, 58+gO, 59+gO, 60+gO, 61+gO, 62+gO, 63+gO, 64+gO, 66+gO, 67+gO, 68+gO,
-   69+gO, 70+gO, 72+gO, 73+gO, 74+gO, 75+gO, 77+gO, 78+gO, 79+gO, 81+gO, 82+gO, 83+gO, 85+gO, 86+gO, 87+gO, 89+gO,
-   90+gO, 92+gO, 93+gO, 95+gO, 96+gO, 98+gO, 99+gO,101+gO,102+gO,104+gO,105+gO,107+gO,109+gO,110+gO,112+gO,114+gO,
-  115+gO,117+gO,119+gO,120+gO,122+gO,124+gO,126+gO,127+gO,129+gO,131+gO,133+gO,135+gO,137+gO,138+gO,140+gO,142+gO,
-  144+gO,146+gO,148+gO,150+gO,152+gO,154+gO,156+gO,158+gO,160+gO,162+gO,164+gO,167+gO,169+gO,171+gO,173+gO,175+gO,
-  177+gO,180+gO,182+gO,184+gO,186+gO,189+gO,191+gO,193+gO,196+gO,198+gO,200+gO,203+gO,205+gO,208+gO,210+gO,213+gO,
-  215+gO,218+gO,220+gO,223+gO,225+gO,228+gO,231+gO,233+gO,236+gO,239+gO,241+gO,244+gO,247+gO,249+gO,252+gO,   255 };
-
 ///////////////////////////////////////////////////////////////////////////////
 // setupLeds
 ///////////////////////////////////////////////////////////////////////////////
@@ -45,6 +25,7 @@ RazzleMatrix* setupLeds(const RazzleMatrixConfig* info) {
   matrix->frames[0] = new RazzleMatrix(frameled0, info->width, info->height, info->matrixType);
   matrix->frames[1] = new RazzleMatrix(frameled1, info->width, info->height, info->matrixType);
 
+  matrix->enableGamma(true);
   if (!leds || !frameled0 || !frameled1 || !matrix->frames[0] || !matrix->frames[1]) {
     //console.debugln("Error allocating LED buffers");
     return nullptr;

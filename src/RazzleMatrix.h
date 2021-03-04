@@ -5,7 +5,11 @@
 
 // configure FastLED
 #define FASTLED_ALLOW_INTERRUPTS 0
+
+// Default CHIPSET
+#ifndef CHIPSET
 #define CHIPSET         WS2811
+#endif
 
 // suppress extraneous warnings
 #define FASTLED_INTERNAL
@@ -17,6 +21,9 @@ typedef uint16_t led_t;
 typedef float framerate_t;
 typedef int16_t pixel_t;
 const int MAX_SEGMENTS = 16;
+
+// Default LED_DATA_PINS
+#ifndef LED_DATA_PIN0
 
 // These need to be statically defined so as to work with the FastLED templates
 #ifdef ESP8266
@@ -55,7 +62,41 @@ const uint8_t LED_DATA_PIN6 = 17;
 const uint8_t LED_DATA_PIN7 = 17;
 #endif
 
+#else
+
+#ifndef LED_DATA_PIN1
+#define LED_DATA_PIN1 LED_DATA_PIN0
+#endif
+#ifndef LED_DATA_PIN2
+#define LED_DATA_PIN2 LED_DATA_PIN0
+#endif
+#ifndef LED_DATA_PIN3
+#define LED_DATA_PIN3 LED_DATA_PIN0
+#endif
+#ifndef LED_DATA_PIN4
+#define LED_DATA_PIN4 LED_DATA_PIN0
+#endif
+#ifndef LED_DATA_PIN5
+#define LED_DATA_PIN5 LED_DATA_PIN0
+#endif
+#ifndef LED_DATA_PIN6
+#define LED_DATA_PIN6 LED_DATA_PIN0
+#endif
+#ifndef LED_DATA_PIN7
+#define LED_DATA_PIN7 LED_DATA_PIN0
+#endif
+#ifndef LED_DATA_PIN8
+#define LED_DATA_PIN8 LED_DATA_PIN0
+#endif
+#ifndef LED_DATA_PIN9
+#define LED_DATA_PIN9 LED_DATA_PIN0
+#endif
+
+#endif  // LED_DATA_PIN0
+
 class RazzleMode;
+
+class RazzleMatrix;
 
 struct RazzleMatrixConfig {
   led_t width;
@@ -65,6 +106,8 @@ struct RazzleMatrixConfig {
   uint8_t matrixType;
   led_t segment[MAX_SEGMENTS];
 };
+
+RazzleMatrix* setupLeds(const RazzleMatrixConfig* info);
 
 class RazzleMatrix : public FastLED_NeoMatrix {
   public:
@@ -134,6 +177,5 @@ class RazzleMatrix : public FastLED_NeoMatrix {
     millis_t _autoSwitchBeginTimeout = 1000 * 5;
 };
 
-RazzleMatrix* setupLeds(const RazzleMatrixConfig* info);
 
 #endif

@@ -5,7 +5,7 @@ class WordClockMode : public ClockMode {
     virtual const char* name() { return "Word"; }
     virtual void draw(RazzleMatrix* frame);
     virtual framerate_t fps() { return 2*_m->width(); }
-    virtual bool canRun() { return _m->width() >= 5 && _m->height() >= 7 && theClock.hasBeenSet(); }
+    virtual bool canRun() { return _m->width() >= 5 && _m->height() >= 5 && theClock.hasBeenSet(); }
     virtual bool dither() { return false; }
     virtual bool interpolate() { return false; }
     virtual void begin() {
