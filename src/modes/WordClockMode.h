@@ -10,67 +10,88 @@ class WordClockMode : public ClockMode {
     virtual bool interpolate() { return false; }
     virtual void begin() {
       RazzleMode::begin();
-      scrollPos = _m->width();
+      _scrollPos = _m->width();
     }
-  private:
-    pixel_t scrollPos = 0;
+    virtual void message(String& m);
+  protected:
+    pixel_t _scrollPos = 0;
 };
 
+void WordClockMode::message(String& m) {
+  char time[10];
+  sprintf(time, "  %d:%02d  ", theClock.hourFormat12(), theClock.minute());
+  m = time;
+}
 
 // here we go
 void WordClockMode::draw(RazzleMatrix* frame) {
 
   frame->fillScreen(LED_BLACK);
   frame->setTextColor(LED_RED_HIGH, LED_BLACK),
-  frame->setCursor(scrollPos, 0);
-  uint8_t size = frame->height()/7;
-  frame->setTextSize(size);
+  frame->setCursor(_scrollPos, 0);
+  uint8_t textsize = frame->height()/7;
+  if (textsize < 1) { textsize = 1; }
+  frame->setTextSize(textsize);
   frame->setTextWrap(false);
 
-  char time[100];
+  String m;
+  message(m);
+  frame->print(m);
 
-  sprintf(time, "  %d:%02d  ", theClock.hourFormat12(), theClock.minute());
-
-  frame->print(time);
-
-  // calculate string width
-  // FIXME getTextBounds clips to screen :(  )
-  int16_t x1,y1;
-  uint16_t w,h;
-  scrollPos--;
-  uint16_t totalw = 0;
-  totalw = strlen(time);
-  int i = 0;
-  // assumes we can fit a whole character on the screen width
-  while (time[i] != 0) {
-    char c[2];
-    c[0] = time[i];
-    c[1] = 0;
-    frame->getTextBounds(c, 0, 0, &x1, &y1, &w, &h);
-    totalw += w;
-    i++;
-  }
-
+  pixel_t totalw = m.length() * textsize * 6;
   // loop around
-  if (-scrollPos > totalw) {
-    scrollPos = 0;
+  if (-_scrollPos > totalw) {
+    _scrollPos = 0;
+  } else {
+    _scrollPos--;
   }
-
 }
 
 WordClockMode theWordClockMode;
-/*
-MOTDMode theMOTDMode;
-SayMode theSayMode;
 
-class SayCommand : public Command {
+class VerticalWordClockMode : public WordClockMode {
   public:
-    const char* getName() { return "say"; }
-    const char* getHelp() { return "Print text"; }
-    void execute(Console* c, uint8_t paramCount, char** params) {
-      c->println("Goodbye!");
-      console.stop();
+    virtual const char* name() { return "VWord"; }
+    virtual void draw(RazzleMatrix* frame);
+    virtual framerate_t fps() { return 30; }
+   virtual void begin() {
+      RazzleMode::begin();
+      _scrollPos = _m->height();
     }
 };
-ExitCommand theExitCommand;
-*/
+
+  // TODO: make work with non 5x7 chars
+  // TODO: center text (need to draw each character separately)
+void VerticalWordClockMode::draw(RazzleMatrix* frame) {
+
+  uint8_t textsize = frame->width()/5;
+  if (textsize < 1) { textsize = 1; }
+  pixel_t xoffset = (frame->width() - (textsize * 5))/2; 
+  pixel_t lineheight = textsize * 8;
+ 
+  frame->fillScreen(LED_BLACK);
+  frame->setTextColor(LED_RED_HIGH, LED_BLACK);
+  frame->setTextSize(textsize);
+  frame->setTextWrap(false);
+
+  String m;
+  message(m);
+  int i = 0;
+  pixel_t ypos = _scrollPos;
+  while (m[i]) {
+    frame->setCursor(xoffset, ypos);
+    frame->print(m[i]);
+    i++;
+    ypos += lineheight;
+  }
+  
+  pixel_t totalheight = lineheight * m.length();
+  // loop around
+  if (-_scrollPos > totalheight) {
+    _scrollPos = 0;
+  } else {
+    _scrollPos--;
+  }
+}
+
+VerticalWordClockMode theVerticalWordClockMode;
