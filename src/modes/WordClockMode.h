@@ -1,26 +1,31 @@
 #include "ClockMode.h"
+  // TODO: make work with non 5x7 chars
+  // TODO: center text (need to draw each character separately)
 
 class WordClockMode : public ClockMode {
   public:
-    virtual const char* name() { return "Word"; }
-    virtual void draw(RazzleMatrix* frame);
-    virtual framerate_t fps() { return 2*_m->width(); }
-    virtual bool canRun() { return _m->width() >= 5 && _m->height() >= 5 && theClock.hasBeenSet(); }
-    virtual bool dither() { return false; }
-    virtual bool interpolate() { return false; }
-    virtual void begin() {
+    const char* name() override { return "Word"; }
+    void draw(RazzleMatrix* frame) override;
+    framerate_t fps() override { return 2*_m->width(); }
+    bool canRun() override { return _m->width() >= 5 && _m->height() >= 5 && theClock.hasBeenSet(); }
+    bool dither() override { return false; }
+    bool interpolate() override { return false; }
+    void begin() override {
       RazzleMode::begin();
       _scrollPos = _m->width();
+      _iterations = 0;
     }
-    virtual void message(String& m);
+    virtual String message();
   protected:
     pixel_t _scrollPos = 0;
+    int _iterations = -1;
 };
 
-void WordClockMode::message(String& m) {
+String WordClockMode::message() {
   char time[10];
-  sprintf(time, "  %d:%02d  ", theClock.hourFormat12(), theClock.minute());
-  m = time;
+  sprintf(time, "%d:%02d", theClock.hourFormat12(), theClock.minute());
+  String m = time;
+  return m;
 }
 
 // here we go
@@ -34,14 +39,14 @@ void WordClockMode::draw(RazzleMatrix* frame) {
   frame->setTextSize(textsize);
   frame->setTextWrap(false);
 
-  String m;
-  message(m);
+  String m = message();
   frame->print(m);
 
   pixel_t totalw = m.length() * textsize * 6;
   // loop around
   if (-_scrollPos > totalw) {
-    _scrollPos = 0;
+    _scrollPos = _m->width();
+    _iterations++;
   } else {
     _scrollPos--;
   }
@@ -51,17 +56,16 @@ WordClockMode theWordClockMode;
 
 class VerticalWordClockMode : public WordClockMode {
   public:
-    virtual const char* name() { return "VWord"; }
-    virtual void draw(RazzleMatrix* frame);
-    virtual framerate_t fps() { return 30; }
-   virtual void begin() {
+    const char* name() override { return "VWord"; }
+    void draw(RazzleMatrix* frame) override;
+    framerate_t fps() override { return 2*_m->height(); }
+    void begin() override {
       RazzleMode::begin();
       _scrollPos = _m->height();
+      _iterations = 0;
     }
 };
 
-  // TODO: make work with non 5x7 chars
-  // TODO: center text (need to draw each character separately)
 void VerticalWordClockMode::draw(RazzleMatrix* frame) {
 
   uint8_t textsize = frame->width()/5;
@@ -74,8 +78,7 @@ void VerticalWordClockMode::draw(RazzleMatrix* frame) {
   frame->setTextSize(textsize);
   frame->setTextWrap(false);
 
-  String m;
-  message(m);
+  String m = message();
   int i = 0;
   pixel_t ypos = _scrollPos;
   while (m[i]) {
@@ -88,10 +91,80 @@ void VerticalWordClockMode::draw(RazzleMatrix* frame) {
   pixel_t totalheight = lineheight * m.length();
   // loop around
   if (-_scrollPos > totalheight) {
-    _scrollPos = 0;
+    _scrollPos = _m->height();
+    _iterations++;
   } else {
     _scrollPos--;
   }
 }
 
 VerticalWordClockMode theVerticalWordClockMode;
+
+class MessageMode : public WordClockMode {
+  public:
+    const char* name() override { return "Msg"; }
+    bool canRun() override { return true; }
+    bool wantsToRun() override { return _iterations == 0; }
+    bool isScreensaver() override { return _msg.length() > 0; }
+    String message() override { return _msg; };
+    virtual void setMessage(String& m) { _msg = m; };
+
+  protected:
+    String _msg = "Hello World!";
+
+};
+MessageMode theMessageMode;
+
+class MessageCommand : public Command {
+  public:
+    const char* getName() override { return "msg"; }
+    const char* getHelp() override { return ("<text> - display message"); }
+    void execute(Console* c, uint8_t paramCount, char** params) {
+      if (paramCount > 0) {
+        String msg;
+        for (int i = 1; i <= paramCount; i++) {
+          msg += params[i];
+          if (i < paramCount)
+            msg += ' ';
+        }
+        theMessageMode.setMessage(msg);
+      }
+      RazzleMode::defaultMatrix()->setLEDMode(&theMessageMode);
+    }
+};
+MessageCommand theMessageCommand;
+
+class VMessageMode : public VerticalWordClockMode {
+  public:
+    const char* name() override { return "VMsg"; }
+    bool canRun() override { return true; }
+    bool wantsToRun() override { return _iterations == 0; }
+    bool isScreensaver() override { return _msg.length() > 0; }
+
+    String message() override { return _msg; };
+    virtual void setMessage(String& m) { _msg = m; };
+
+  protected:
+    String _msg = "Hello World!";
+
+};
+VMessageMode theVMessageMode;
+
+class VMessageCommand : public Command {
+  public:
+    const char* getName() override { return "vmsg"; }
+    const char* getHelp() override { return ("<text> - display message vertically"); }
+    void execute(Console* c, uint8_t paramCount, char** params) override {
+      if (paramCount > 0) {
+        String msg;
+        for (int i = 1; i <= paramCount; i++) {
+          msg += params[i];
+          if (i < paramCount)
+            msg += ' ';
+        }
+        theVMessageMode.setMessage(msg);
+      }
+      RazzleMode::defaultMatrix()->setLEDMode(&theVMessageMode);
+    }
+};
+VMessageCommand theVMessageCommand;

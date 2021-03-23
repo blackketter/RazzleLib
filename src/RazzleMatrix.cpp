@@ -3,7 +3,7 @@
 #include "Clock.h"
 #include "TimeZones.h"
 
-//extern Console console;
+extern Console console;
 
 #include "Commands/FPSCommand.h"
 FPSCommand theFPSCommand;
@@ -265,7 +265,7 @@ void RazzleMatrix::setRandomScreensaverMode() {
   // see if anybody wants to run.  first wins
   while (m) {
     if (m->wantsToRun() && m->canRun() && m->isScreensaver()) {
-      //console.printf("%s wants to run\n",m->name());
+      console.debugf("%s wants to run\n",m->name());
       break;
     }
     m = m->next();
@@ -294,6 +294,7 @@ void RazzleMatrix::setRandomScreensaverMode() {
   }
 
   if (m) {
+    console.debugf("%s runs randomly\n",m->name());
     setLEDMode(m);
   }
 }
